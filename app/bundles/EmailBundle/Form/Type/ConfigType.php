@@ -212,7 +212,7 @@ class ConfigType extends AbstractType
                     'mautic.transport.amazon'    => 'mautic.email.config.mailer_transport.amazon',
                     'gmail'                      => 'mautic.email.config.mailer_transport.gmail',
                     'mautic.transport.mandrill'  => 'mautic.email.config.mailer_transport.mandrill',
-					'mautic.transport.mailjet'   => 'mautic.email.config.mailer_transport.mailjet',
+                    'mautic.transport.mailjet'   => 'mautic.email.config.mailer_transport.mailjet',
                     'smtp'                       => 'mautic.email.config.mailer_transport.smtp',
                     'mail'                       => 'mautic.email.config.mailer_transport.mail',
                     'mautic.transport.postmark'  => 'mautic.email.config.mailer_transport.postmark',
