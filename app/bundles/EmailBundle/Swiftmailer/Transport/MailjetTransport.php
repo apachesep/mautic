@@ -140,12 +140,10 @@ class MailjetTransport extends AbstractTokenSmtpTransport implements InterfaceCa
                 if (isset($event['CustomID']) && $event['CustomID'] !== '') {
                     $rows[$type]['hashIds'][$event['CustomID']] = $reason;
                 } else {
-                    $rows[$type] ['emails'] [$event ['email']] = $reason;
-				}
-			}
-		}
-		return $rows;
+                    $rows[$type]['emails'][$event['email']] = $reason;
+                }
+            }
+        }
+        return $rows;
     }
-
-
 }

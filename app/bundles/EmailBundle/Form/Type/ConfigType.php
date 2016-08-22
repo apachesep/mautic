@@ -345,7 +345,7 @@ class ConfigType extends AbstractType
                 "cram-md5"
             ], "config_emailconfig_mailer_transport":[
                 "mautic.transport.mandrill",
-				"mautic.transport.mailjet",
+                "mautic.transport.mailjet",
                 "mautic.transport.sendgrid",
                 "mautic.transport.amazon",
                 "mautic.transport.postmark",
