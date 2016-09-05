@@ -228,10 +228,6 @@ class AjaxController extends CommonAjaxController
                             $mailer->setHost($settings['amazon_region']);
                         }
                     }
-
-                    if ('mautic.transport.sparkpost' == $transport) {
-                        $mailer->setApiKey($settings['api_key']);
-                    }
             }
 
             if (method_exists($mailer, 'setMauticFactory')) {
