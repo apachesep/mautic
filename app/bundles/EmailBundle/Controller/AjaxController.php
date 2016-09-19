@@ -20,7 +20,7 @@ use Mautic\EmailBundle\Swiftmailer\Transport\MandrillTransport;
 use Mautic\EmailBundle\Swiftmailer\Transport\PostmarkTransport;
 use Mautic\EmailBundle\Swiftmailer\Transport\SendgridTransport;
 use Mautic\EmailBundle\Swiftmailer\Transport\SparkpostTransport;
-
+use Mautic\EmailBundle\Swiftmailer\Transport\MailjetTransport;
 /**
  * Class AjaxController
  *
@@ -246,9 +246,9 @@ class AjaxController extends CommonAjaxController
                     if (empty($settings['password'])) {
                         $settings['password'] = $this->get('mautic.helper.core_parameters')->getParameter('mailer_password');
                     }
-                    $mailer->setUsername($settings['user']);
-                    $mailer->setPassword($settings['password']);
                 }
+
+
 
                 $logger = new \Swift_Plugins_Loggers_ArrayLogger();
                 $mailer->registerPlugin(new \Swift_Plugins_LoggerPlugin($logger));
