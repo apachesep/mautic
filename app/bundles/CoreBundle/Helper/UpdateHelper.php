@@ -80,6 +80,22 @@ class UpdateHelper
     }
 
     /**
+     * Tries to get server OS
+     *
+     * @return string
+     */
+    public function getServerOs()
+    {
+        if (function_exists('php_uname')) {
+            return php_uname('s') . ' ' . php_uname('r');
+        } elseif (defined('PHP_OS')) {
+            return PHP_OS;
+        }
+
+        return 'N/A';
+    }
+
+    /**
      * Retrieves the update data from our home server
      *
      * @param bool $overrideCache
@@ -106,19 +122,16 @@ class UpdateHelper
         // Before processing the update data, send up our metrics
         try {
             // Generate a unique instance ID for the site
-            $instanceId = hash('sha1', $this->factory->getParameter('secret_key').'Mautic'.$this->factory->getParameter('db_driver'));
+            $instanceId = hash('sha1', $this->factory->getParameter('secret_key') . 'Mautic' . $this->factory->getParameter('db_driver'));
 
-            $data = array_map(
-                'trim',
-                [
-                    'application'   => 'Mautic',
-                    'version'       => $this->factory->getVersion(),
-                    'phpVersion'    => PHP_VERSION,
-                    'dbDriver'      => $this->factory->getParameter('db_driver'),
-                    'serverOs'      => php_uname('s').' '.php_uname('r'),
-                    'instanceId'    => $instanceId,
-                    'installSource' => $this->factory->getParameter('install_source', 'Mautic')
-                ]
+            $data = array(
+                'application'   => 'Mautic',
+                'version'       => $this->factory->getVersion(),
+                'phpVersion'    => PHP_VERSION,
+                'dbDriver'      => $this->factory->getParameter('db_driver'),
+                'serverOs'      => $this->getServerOs(),
+                'instanceId'    => $instanceId,
+                'installSource' => $this->factory->getParameter('install_source', 'Mautic')
             );
 
             $this->connector->post('https://updates.mautic.org/stats/send', $data, [], 10);
