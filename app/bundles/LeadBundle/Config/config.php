@@ -61,6 +61,14 @@ return [
             'mautic_contact_action'           => [
                 'path'       => '/contacts/{objectAction}/{objectId}',
                 'controller' => 'MauticLeadBundle:Lead:execute'
+            ],
+            'mautic_company_index'              => [
+                'path'       => '/companies/{page}',
+                'controller' => 'MauticLeadBundle:Company:index'
+            ],
+            'mautic_company_action'             => [
+                'path'       => '/companies/{objectAction}/{objectId}',
+                'controller' => 'MauticLeadBundle:Company:execute'
             ]
         ],
         'api'  => [
@@ -155,6 +163,12 @@ return [
                     'access'    => ['lead:leads:viewown', 'lead:leads:viewother'],
                     'route' => 'mautic_contact_index',
                     'priority' => 80
+                ],
+                'mautic.companies.menu.index' => [
+                    'route'  => 'mautic_company_index',
+                    'iconClass' => 'fa-building-o',
+                    'access'    => ['lead:leads:viewother'],
+                    'priority'  => 75
                 ],
                 'mautic.lead.list.menu.index'  => [
                     'iconClass' => 'fa-pie-chart',
@@ -376,6 +390,26 @@ return [
                 'class'     => 'Mautic\LeadBundle\Form\Type\DashboardLeadsLifetimeWidgetType',
                 'arguments' => 'mautic.factory',
                 'alias'     => 'lead_dashboard_leads_lifetime_widget'
+            ],
+            'mautic.company.type.form'                  => [
+                'class'     => 'Mautic\LeadBundle\Form\Type\CompanyType',
+                'arguments' => ['doctrine.orm.entity_manager','mautic.security'],
+                'alias'     => 'company'
+            ],
+            'mautic.company.campaign.action.type.form'                  => [
+                'class'     => 'Mautic\LeadBundle\Form\Type\AddToCompanyActionType',
+                'arguments' => 'router',
+                'alias'     => 'addtocompany_action'
+            ],
+            'mautic.company.list.type.form'                  => [
+                'class'     => 'Mautic\LeadBundle\Form\Type\CompanyListType',
+                'arguments' => ['mautic.company.model.company',  'mautic.helper.user'],
+                'alias'     => 'company_list'
+            ],
+            'mautic.company.lead.type.form'                  => [
+                'class'     => 'Mautic\LeadBundle\Form\Type\CompanyLeadType',
+                'arguments' => ['doctrine.orm.entity_manager','mautic.security'],
+                'alias'     => 'company_lead'
             ]
         ],
         'other'   => [
@@ -415,7 +449,8 @@ return [
                     'mautic.helper.integration',
                     'mautic.lead.model.field',
                     'mautic.lead.model.list',
-                    'form.factory'
+                    'form.factory',
+                    'mautic.company.model.company'
                 ]
             ],
             'mautic.lead.model.field' => [
@@ -432,6 +467,13 @@ return [
             ],
             'mautic.lead.model.note' => [
                 'class' => 'Mautic\LeadBundle\Model\NoteModel'
+            ],
+            'mautic.company.model.company' => [
+                'class' => 'Mautic\LeadBundle\Model\CompanyModel',
+                'arguments' => [
+                    'mautic.lead.model.field',
+                    'session'
+                ]
             ]
         ]
     ]

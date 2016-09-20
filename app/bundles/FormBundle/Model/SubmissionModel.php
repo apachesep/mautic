@@ -29,6 +29,8 @@ use Mautic\FormBundle\Helper\FormFieldHelper;
 use Mautic\LeadBundle\Entity\Lead;
 use Mautic\CoreBundle\Helper\Chart\LineChart;
 use Mautic\CoreBundle\Helper\Chart\ChartQuery;
+use Mautic\LeadBundle\Helper\IdentifyCompanyHelper;
+use Mautic\LeadBundle\Model\CompanyModel;
 use Mautic\LeadBundle\Model\FieldModel as LeadFieldModel;
 use Mautic\LeadBundle\Model\LeadModel;
 use Mautic\PageBundle\Model\PageModel;
@@ -79,14 +81,19 @@ class SubmissionModel extends CommonFormModel
     protected $campaignModel;
 
     /**
-     * @var LeadFieldModel
-     */
+    * @var LeadFieldModel
+    */
     protected $leadFieldModel;
 
     /**
      * @var FormFieldHelper
      */
     protected $fieldHelper;
+
+    /**
+     * @var CompanyModel
+     */
+    protected $companyModel;
 
     /**
      * SubmissionModel constructor.
@@ -99,6 +106,7 @@ class SubmissionModel extends CommonFormModel
      * @param CampaignModel    $campaignModel
      * @param LeadFieldModel   $leadFieldModel
      * @param FormFieldHelper  $fieldHelper
+     * @param CompanyModel     $companyModel
      */
     public function __construct(
         IpLookupHelper $ipLookupHelper,
@@ -108,7 +116,8 @@ class SubmissionModel extends CommonFormModel
         LeadModel $leadModel,
         CampaignModel $campaignModel,
         LeadFieldModel $leadFieldModel,
-        FormFieldHelper $fieldHelper
+        FormFieldHelper $fieldHelper,
+        CompanyModel $companyModel
     ) {
         $this->ipLookupHelper   = $ipLookupHelper;
         $this->templatingHelper = $templatingHelper;
@@ -118,6 +127,7 @@ class SubmissionModel extends CommonFormModel
         $this->campaignModel    = $campaignModel;
         $this->leadFieldModel   = $leadFieldModel;
         $this->fieldHelper      = $fieldHelper;
+        $this->companyModel     = $companyModel;
     }
 
     /**
@@ -283,6 +293,7 @@ class SubmissionModel extends CommonFormModel
             }
 
             $leadField = $f->getLeadField();
+
             if (!empty($leadField)) {
                 $leadFieldMatches[$leadField] = $value;
             }
@@ -851,7 +862,9 @@ class SubmissionModel extends CommonFormModel
 
             // Update unique fields data for comparison with submitted data
             $currentFields       = $this->leadModel->flattenFields($lead->getFields());
+
             $uniqueFieldsCurrent = $getData($currentFields, true);
+
         }
 
         if (!$inKioskMode) {
@@ -917,6 +930,10 @@ class SubmissionModel extends CommonFormModel
             // Set system current lead which will still allow execution of events without generating tracking cookies
             $this->leadModel->setSystemCurrentLead($lead);
         }
+        $company = IdentifyCompanyHelper::identifyLeadsCompany($leadFieldMatches, $lead, $this->companyModel);
+        if ($company[1]) {
+            $lead->addCompanyChangeLogEntry('form', 'Identify Company', 'Lead Added to company', $company[0]);
+        }
 
         return $lead;
     }
@@ -954,10 +971,9 @@ class SubmissionModel extends CommonFormModel
     /**
      * @deprecated - added for BC; to be removed in 3.0
      *
-     * @param Action[]        $actions
      * @param SubmissionEvent $event
-     * @param                 $validationErrors
-     * @param                 $lastAlias            Because prior to now the last alias was used regardless
+     * @param array           $validationErrors
+     * @param string          $lastAlias            Because prior to now the last alias was used regardless
      */
     protected function validateActionCallbacks(SubmissionEvent $event, &$validationErrors, $lastAlias)
     {

@@ -329,7 +329,7 @@ class FieldType extends AbstractType
         }
 
         if ($addLeadFieldList) {
-
+            $options['leadFields']['Company'] = ['company' => 'Company Name'];
             if (!isset($options['data']['leadField'])) {
                 switch ($type) {
                     case 'email':

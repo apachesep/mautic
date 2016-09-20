@@ -285,6 +285,7 @@ return [
                     'mautic.campaign.model.campaign',
                     'mautic.lead.model.field',
                     'mautic.helper.form.field_helper',
+                    'mautic.company.model.company'
                 ]
             ]
         ],
