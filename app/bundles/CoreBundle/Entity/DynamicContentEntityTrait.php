@@ -79,4 +79,29 @@ trait DynamicContentEntityTrait
             return $this->dynamicContent->get($token);
         }
     }
+
+    /**
+     * Reset dynamic content.
+     */
+    public function resetDynamicContent()
+    {
+        $defaultDynamicContent = [
+            [
+                'tokenName' => null,
+                'content'   => null,
+                'filters'   => [
+                    [
+                        'content' => null,
+                        'filters' => [
+                            [
+                                'glue'   => null
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        ];
+
+        $this->dynamicContent = new ArrayCollection($defaultDynamicContent);
+    }
 }
