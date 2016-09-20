@@ -14,8 +14,12 @@ use Mautic\CoreBundle\Factory\MauticFactory;
 use Mautic\CoreBundle\Form\DataTransformer\IdToEntityModelTransformer;
 use Mautic\CoreBundle\Form\EventListener\CleanFormSubscriber;
 use Mautic\CoreBundle\Form\EventListener\FormExitSubscriber;
+use Mautic\LeadBundle\Helper\FormFieldHelper;
+use Mautic\LeadBundle\Form\DataTransformer\FieldFilterTransformer;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\Form\FormInterface;
+use Symfony\Component\Form\FormView;
 use Symfony\Component\Form\FormEvent;
 use Symfony\Component\Form\FormEvents;
 use Symfony\Component\OptionsResolver\OptionsResolver;
@@ -33,6 +37,12 @@ class EmailType extends AbstractType
     private $em;
     private $request;
 
+    private $countryChoices = [];
+    private $regionChoices = [];
+    private $timezoneChoices = [];
+    private $stageChoices = [];
+    private $localeChoices = [];
+
     /**
      * @param MauticFactory $factory
      */
@@ -42,6 +52,17 @@ class EmailType extends AbstractType
         $this->defaultTheme = $factory->getParameter('theme');
         $this->em           = $factory->getEntityManager();
         $this->request      = $factory->getRequest();
+
+        $this->countryChoices  = FormFieldHelper::getCountryChoices();
+        $this->regionChoices   = FormFieldHelper::getRegionChoices();
+        $this->timezoneChoices = FormFieldHelper::getTimezonesChoices();
+        $this->localeChoices   = FormFieldHelper::getLocaleChoices();
+
+        $stages = $factory->getModel('stage')->getRepository()->getSimpleList();
+
+        foreach ($stages as $stage) {
+            $this->stageChoices[$stage['value']] = $stage['label'];
+        }
     }
 
     /**
@@ -458,6 +479,26 @@ class EmailType extends AbstractType
             );
         }
 
+        $builder->add(
+            $builder->create(
+                'dynamicContent',
+                'collection',
+                [
+                    'type'           => 'dynamic_content_filter',
+                    'options'        => [
+                        'label'     => false,
+                    ],
+                    'error_bubbling' => false,
+                    'mapped'         => true,
+                    'allow_add'      => true,
+                    'allow_delete'   => true,
+                    'label'          => false
+                ]
+            )
+        );
+
+        $builder->add('buttons', 'form_buttons');
+
 
         if (!empty($options["action"])) {
             $builder->setAction($options["action"]);
@@ -476,6 +517,18 @@ class EmailType extends AbstractType
         );
 
         $resolver->setDefined(['update_select']);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function buildView(FormView $view, FormInterface $form, array $options)
+    {
+        $view->vars['countries'] = $this->countryChoices;
+        $view->vars['regions']   = $this->regionChoices;
+        $view->vars['timezones'] = $this->timezoneChoices;
+        $view->vars['stages']    = $this->stageChoices;
+        $view->vars['locales']   = $this->localeChoices;
     }
 
     /**

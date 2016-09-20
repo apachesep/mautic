@@ -548,6 +548,7 @@ class LeadController extends FormController
      */
     public function editAction($objectId, $ignorePost = false)
     {
+        /** @var LeadModel $model */
         $model = $this->getModel('lead.lead');
         $lead  = $model->getEntity($objectId);
 
@@ -615,7 +616,7 @@ class LeadController extends FormController
             ]
         );
         $form   = $model->createForm($lead, $this->get('form.factory'), $action, ['fields' => $fields]);
-
+var_dump($this->request->request);die;
         ///Check for a submitted form and process it
         if (!$ignorePost && $this->request->getMethod() == 'POST') {
             $valid = false;
