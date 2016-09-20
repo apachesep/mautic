@@ -57,7 +57,7 @@ class FormController extends CommonFormController
         $session = $this->get('session');
 
         //set limits
-        $limit = $session->get('mautic.form.limit', $this->get('mautic.helper.core_parameters')->getParameter('default_pagelimit'));
+        $limit = $session->get('mautic.form.limit', $this->coreParametersHelper->getParameter('default_pagelimit'));
         $start = ($page === 1) ? 0 : (($page - 1) * $limit);
         if ($start < 0) {
             $start = 0;
@@ -69,7 +69,7 @@ class FormController extends CommonFormController
         $filter = ['string' => $search, 'force' => []];
 
         if (!$permissions['form:forms:viewother']) {
-            $filter['force'][] = ['column' => 'f.createdBy', 'expr' => 'eq', 'value' => $this->get('mautic.helper.user')->getUser()->getId()];
+            $filter['force'][] = array('column' => 'f.createdBy', 'expr' => 'eq', 'value' => $this->user->getId());
         }
 
         $orderBy    = $session->get('mautic.form.orderby', 'f.name');
@@ -410,7 +410,7 @@ class FormController extends CommonFormController
             $field = new Field();
 
             $modifiedFields[$keyId]                    = $field->convertToArray();
-            $modifiedFields[$keyId]['label']           = $this->get('translator')->trans('mautic.core.form.submit');
+            $modifiedFields[$keyId]['label']           = $this->translator->trans('mautic.core.form.submit');
             $modifiedFields[$keyId]['alias']           = 'submit';
             $modifiedFields[$keyId]['showLabel']       = 1;
             $modifiedFields[$keyId]['type']            = 'button';

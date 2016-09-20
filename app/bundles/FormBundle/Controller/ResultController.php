@@ -11,6 +11,7 @@ namespace Mautic\FormBundle\Controller;
 
 use Mautic\CoreBundle\Controller\FormController as CommonFormController;
 use Mautic\FormBundle\Model\FormModel;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Class ResultController
@@ -57,8 +58,7 @@ class ResultController extends CommonFormController
             'form:forms:viewown',
             'form:forms:viewother',
             $form->getCreatedBy()
-        )
-        ) {
+        )) {
             return $this->accessDenied();
         }
 
@@ -67,11 +67,7 @@ class ResultController extends CommonFormController
         }
 
         //set limits
-        $limit = $session->get(
-            'mautic.formresult.'.$objectId.'.limit',
-            $this->get('mautic.helper.core_parameters')->getParameter('default_pagelimit')
-        );
-
+        $limit = $session->get('mautic.formresult.'.$objectId.'.limit', $this->coreParametersHelper->getParameter('default_pagelimit'));
         $start = ($page === 1) ? 0 : (($page - 1) * $limit);
         if ($start < 0) {
             $start = 0;
@@ -172,7 +168,7 @@ class ResultController extends CommonFormController
      * @param int    $objectId
      * @param string $format
      *
-     * @return \Symfony\Component\HttpFoundation\StreamedResponse
+     * @return \Symfony\Component\HttpFoundation\StreamedResponse|Response
      * @throws \Exception
      */
     public function exportAction($objectId, $format = 'csv')
@@ -207,8 +203,7 @@ class ResultController extends CommonFormController
             'form:forms:viewown',
             'form:forms:viewother',
             $form->getCreatedBy()
-        )
-        ) {
+        )) {
             return $this->accessDenied();
         }
 
