@@ -10,10 +10,14 @@ namespace Mautic\PageBundle\EventListener;
 
 use Mautic\CoreBundle\EventListener\ChannelTrait;
 use Mautic\CoreBundle\EventListener\CommonSubscriber;
+use Mautic\CoreBundle\Factory\MauticFactory;
 use Mautic\LeadBundle\Event\LeadChangeEvent;
 use Mautic\LeadBundle\Event\LeadMergeEvent;
 use Mautic\LeadBundle\Event\LeadTimelineEvent;
 use Mautic\LeadBundle\LeadEvents;
+use Mautic\LeadBundle\Model\ChannelTimelineInterface;
+use Mautic\PageBundle\Model\PageModel;
+use Mautic\PageBundle\Model\VideoModel;
 
 /**
  * Class LeadSubscriber
@@ -21,6 +25,31 @@ use Mautic\LeadBundle\LeadEvents;
 class LeadSubscriber extends CommonSubscriber
 {
     use ChannelTrait;
+
+    /**
+     * @var PageModel
+     */
+    protected $pageModel;
+
+    /**
+     * @var VideoModel
+     */
+    protected $videoModel;
+
+    /**
+     * LeadSubscriber constructor.
+     *
+     * @param MauticFactory $factory
+     * @param PageModel     $pageModel
+     * @param VideoModel    $videoModel
+     */
+    public function __construct(MauticFactory $factory, PageModel $pageModel, VideoModel $videoModel)
+    {
+        parent::__construct($factory);
+
+        $this->pageModel  = $pageModel;
+        $this->videoModel = $videoModel;
+    }
 
     /**
      * {@inheritdoc}
@@ -64,9 +93,6 @@ class LeadSubscriber extends CommonSubscriber
         $event->addToCounter($eventTypeKey, $hits);
 
         if (!$event->isEngagementCount()) {
-
-            $model = $this->factory->getModel('page.page');
-
             // Add the hits to the event array
             foreach ($hits['results'] as $hit) {
                 $template = 'MauticPageBundle:SubscribedEvents\Timeline:index.html.php';
@@ -74,22 +100,36 @@ class LeadSubscriber extends CommonSubscriber
 
                 if (!empty($hit['source'])) {
                     if ($channelModel = $this->getChannelModel($hit['source'])) {
+                        if ($channelModel instanceof ChannelTimelineInterface) {
+                            if ($overrideTemplate = $channelModel->getChannelTimelineTemplate($eventTypeKey, $hit)) {
+                                $template = $overrideTemplate;
+                            }
+
+                            if ($overrideEventTypeName = $channelModel->getChannelTimelineLabel($eventTypeKey, $hit)) {
+                                $eventTypeName = $overrideEventTypeName;
+                            }
+
+                            if ($overrideIcon = $channelModel->getChannelTimelineIcon($eventTypeKey, $hit)) {
+                                $icon = $overrideIcon;
+                            }
+                        }
+
+                        /** @deprecated - BC support to be removed in 3.0 */
                         // Allow a custom template if applicable
                         if (method_exists($channelModel, 'getPageHitLeadTimelineTemplate')) {
                             $template = $channelModel->getPageHitLeadTimelineTemplate($hit);
                         }
-
                         if (method_exists($channelModel, 'getPageHitLeadTimelineLabel')) {
                             $eventTypeName = $channelModel->getPageHitLeadTimelineLabel($hit);
                         }
-
                         if (method_exists($channelModel, 'getPageHitLeadTimelineIcon')) {
                             $icon = $channelModel->getPageHitLeadTimelineIcon($hit);
                         }
+                        /** end deprecation */
 
                         if (!empty($hit['sourceId'])) {
                             if ($source = $this->getChannelEntityName($hit['source'], $hit['sourceId'], true)) {
-                                $hit['sourceName'] = $source['name'];
+                                $hit['sourceName']  = $source['name'];
                                 $hit['sourceRoute'] = $source['url'];
                             }
                         }
@@ -97,7 +137,7 @@ class LeadSubscriber extends CommonSubscriber
                 }
 
                 if (!empty($hit['page_id'])) {
-                    $page       = $model->getEntity($hit['page_id']);
+                    $page       = $this->pageModel->getEntity($hit['page_id']);
                     $eventLabel = [
                         'label' => $page->getTitle(),
                         'href'  => $this->router->generate('mautic_page_action', ['objectAction' => 'view', 'objectId' => $hit['page_id']])
@@ -144,9 +184,8 @@ class LeadSubscriber extends CommonSubscriber
         }
 
         /** @var \Mautic\PageBundle\Entity\VideoHitRepository $hitRepository */
-        $hitRepository = $this->factory->getEntityManager()->getRepository('MauticPageBundle:VideoHit');
-
-        $hits = $hitRepository->getTimelineStats($event->getLead()->getId(), $event->getQueryOptions());
+        $hitRepository = $this->em->getRepository('MauticPageBundle:VideoHit');
+        $hits          = $hitRepository->getTimelineStats($event->getLead()->getId(), $event->getQueryOptions());
 
         $event->addToCounter($eventTypeKey, $hits);
 
@@ -178,7 +217,7 @@ class LeadSubscriber extends CommonSubscriber
      */
     public function onLeadChange(LeadChangeEvent $event)
     {
-        $this->factory->getModel('page')->getHitRepository()->updateLeadByTrackingId(
+        $this->pageModel->getHitRepository()->updateLeadByTrackingId(
             $event->getNewLead()->getId(),
             $event->getNewTrackingId(),
             $event->getOldTrackingId()
@@ -190,12 +229,12 @@ class LeadSubscriber extends CommonSubscriber
      */
     public function onLeadMerge(LeadMergeEvent $event)
     {
-        $this->factory->getModel('page')->getHitRepository()->updateLead(
+        $this->pageModel->getHitRepository()->updateLead(
             $event->getLoser()->getId(),
             $event->getVictor()->getId()
         );
 
-        $this->factory->getModel('page.video')->getHitRepository()->updateLead(
+        $this->videoModel->getHitRepository()->updateLead(
             $event->getLoser()->getId(),
             $event->getVictor()->getId()
         );
