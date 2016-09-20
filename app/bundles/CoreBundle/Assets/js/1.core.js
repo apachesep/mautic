@@ -3693,3 +3693,15 @@ var Mautic = {
         return null;
     }
 };
+
+// Show overflow in the App Wrapper when a Chosen dropdown is shown
+
+mQuery(document).on({
+    // The order in which the handlers are registered matter
+    "chosen:hiding_dropdown": function() {
+        mQuery('#app-wrapper').css('overflow', 'hidden');
+    },
+    "chosen:showing_dropdown": function() {
+        mQuery('#app-wrapper').css('overflow', 'visible');
+    }
+});
