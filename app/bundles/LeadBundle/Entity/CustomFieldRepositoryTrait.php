@@ -100,10 +100,6 @@ trait CustomFieldRepositoryTrait
         $this->useDistinctCount = false;
         $this->buildWhereClause($dq, $args);
 
-        // Distinct is required here to get the correct count when group by is used due to applied filters
-        $countSelect = ($this->useDistinctCount) ? 'COUNT(DISTINCT('.$this->getTableAlias().'.id))' : 'COUNT('.$this->getTableAlias().'.id)';
-        $dq->select($countSelect.' as count');
-
         // Filter by an entity query
         if (isset($args['entity_query'])) {
             $dq->andWhere(
@@ -117,99 +113,110 @@ trait CustomFieldRepositoryTrait
             }
         }
 
-        // Advanced search filters may have set a group by and if so, let's remove it for the count.
-        if ($groupBy = $dq->getQueryPart('groupBy')) {
-            $dq->resetQueryPart('groupBy');
+        $groupBy = false;
+        if (!empty($args['withTotalCount'])) {
+            // Distinct is required here to get the correct count when group by is used due to applied filters
+            $countSelect = ($this->useDistinctCount) ? 'COUNT(DISTINCT('.$this->getTableAlias().'.id))' : 'COUNT('.$this->getTableAlias().'.id)';
+            $dq->select($countSelect.' as count');
+
+            // Advanced search filters may have set a group by and if so, let's remove it for the count.
+            if ($groupBy = $dq->getQueryPart('groupBy')) {
+                $dq->resetQueryPart('groupBy');
+            }
+
+            //get a total count
+            $result = $dq->execute()->fetchAll();
+            $total  = ($result) ? $result[0]['count'] : 0;
+
+            if (!$total) {
+                return [
+                    'count'   => 0,
+                    'results' => [],
+                ];
+            }
         }
 
-        //get a total count
-        $result = $dq->execute()->fetchAll();
-        $total  = ($result) ? $result[0]['count'] : 0;
+        if ($groupBy) {
+            $dq->groupBy($groupBy);
+        }
 
-        if (!$total) {
-            $results = [];
+        //now get the actual paginated results
+        $this->buildOrderByClause($dq, $args);
+        $this->buildLimiterClauses($dq, $args);
+
+        $dq->resetQueryPart('select')
+            ->select($this->getTableAlias().'.*');
+
+        $results = $dq->execute()->fetchAll();
+
+        //loop over results to put fields in something that can be assigned to the entities
+        $fieldValues = [];
+        $groups      = $this->getFieldGroups();
+
+        foreach ($results as $result) {
+            $id = $result['id'];
+            //unset all the columns that are not fields
+            $this->removeNonFieldColumns($result);
+
+            foreach ($result as $k => $r) {
+                if (isset($fields[$k])) {
+                    $fieldValues[$id][$fields[$k]['group']][$fields[$k]['alias']]          = $fields[$k];
+                    $fieldValues[$id][$fields[$k]['group']][$fields[$k]['alias']]['value'] = $r;
+                }
+            }
+
+            //make sure each group key is present
+            foreach ($groups as $g) {
+                if (!isset($fieldValues[$id][$g])) {
+                    $fieldValues[$id][$g] = [];
+                }
+            }
+        }
+
+        unset($results, $fields);
+
+        //get an array of IDs for ORM query
+        $ids = array_keys($fieldValues);
+
+        if (count($ids)) {
+            //ORM
+
+            //build the order by id since the order was applied above
+            //unfortunately, doctrine does not have a way to natively support this and can't use MySQL's FIELD function
+            //since we have to be cross-platform; it's way ugly
+
+            //We should probably totally ditch orm for leads
+            $order = '(CASE';
+            foreach ($ids as $count => $id) {
+                $order .= ' WHEN '.$this->getTableAlias().'.id = '.$id.' THEN '.$count;
+                ++$count;
+            }
+            $order .= ' ELSE '.$count.' END) AS HIDDEN ORD';
+
+            //ORM - generates lead entities
+            $q = $this->getEntitiesOrmQueryBuilder($order);
+
+            //only pull the leads as filtered via DBAL
+            $q->where(
+                $q->expr()->in($this->getTableAlias().'.id', ':entityIds')
+            )->setParameter('entityIds', $ids);
+
+            $q->orderBy('ORD', 'ASC');
+
+            $results = $q->getQuery()
+                ->getResult();
+
+            //assign fields
+            foreach ($results as $r) {
+                $id = $r->getId();
+                $r->setFields($fieldValues[$id]);
+
+                if (is_callable($resultsCallback)) {
+                    $resultsCallback($r);
+                }
+            }
         } else {
-            if ($groupBy) {
-                $dq->groupBy($groupBy);
-            }
-            //now get the actual paginated results
-            $this->buildOrderByClause($dq, $args);
-            $this->buildLimiterClauses($dq, $args);
-
-            $dq->resetQueryPart('select')
-                ->select($this->getTableAlias().'.*');
-
-            $results = $dq->execute()->fetchAll();
-
-            //loop over results to put fields in something that can be assigned to the entities
-            $fieldValues = [];
-            $groups      = $this->getFieldGroups();
-
-            foreach ($results as $result) {
-                $id = $result['id'];
-                //unset all the columns that are not fields
-                $this->removeNonFieldColumns($result);
-
-                foreach ($result as $k => $r) {
-                    if (isset($fields[$k])) {
-                        $fieldValues[$id][$fields[$k]['group']][$fields[$k]['alias']]          = $fields[$k];
-                        $fieldValues[$id][$fields[$k]['group']][$fields[$k]['alias']]['value'] = $r;
-                    }
-                }
-
-                //make sure each group key is present
-                foreach ($groups as $g) {
-                    if (!isset($fieldValues[$id][$g])) {
-                        $fieldValues[$id][$g] = [];
-                    }
-                }
-            }
-
-            unset($results, $fields);
-
-            //get an array of IDs for ORM query
-            $ids = array_keys($fieldValues);
-
-            if (count($ids)) {
-                //ORM
-
-                //build the order by id since the order was applied above
-                //unfortunately, doctrine does not have a way to natively support this and can't use MySQL's FIELD function
-                //since we have to be cross-platform; it's way ugly
-
-                //We should probably totally ditch orm for leads
-                $order = '(CASE';
-                foreach ($ids as $count => $id) {
-                    $order .= ' WHEN '.$this->getTableAlias().'.id = '.$id.' THEN '.$count;
-                    ++$count;
-                }
-                $order .= ' ELSE '.$count.' END) AS HIDDEN ORD';
-
-                //ORM - generates lead entities
-                $q = $this->getEntitiesOrmQueryBuilder($order);
-
-                //only pull the leads as filtered via DBAL
-                $q->where(
-                    $q->expr()->in($this->getTableAlias().'.id', ':entityIds')
-                )->setParameter('entityIds', $ids);
-
-                $q->orderBy('ORD', 'ASC');
-
-                $results = $q->getQuery()
-                    ->getResult();
-
-                //assign fields
-                foreach ($results as $r) {
-                    $id = $r->getId();
-                    $r->setFields($fieldValues[$id]);
-
-                    if (is_callable($resultsCallback)) {
-                        $resultsCallback($r);
-                    }
-                }
-            } else {
-                $results = [];
-            }
+            $results = [];
         }
 
         return (!empty($args['withTotalCount'])) ?

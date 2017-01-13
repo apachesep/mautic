@@ -11,7 +11,6 @@
 
 namespace Mautic\CoreBundle\Templating\Helper;
 
-use Mautic\CoreBundle\Factory\MauticFactory;
 use Mautic\CoreBundle\Helper\InputHelper;
 use Symfony\Component\Templating\Helper\Helper;
 
@@ -27,12 +26,14 @@ class FormatterHelper extends Helper
     private $version;
 
     /**
-     * @param MauticFactory $factory
+     * FormatterHelper constructor.
+     *
+     * @param DateHelper $dateHelper
      */
-    public function __construct(MauticFactory $factory)
+    public function __construct(DateHelper $dateHelper)
     {
-        $this->dateHelper = $factory->getHelper('template.date');
-        $this->version    = $factory->getVersion();
+        $this->dateHelper = $dateHelper;
+        $this->version    = MAUTIC_VERSION;
     }
 
     /**

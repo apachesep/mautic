@@ -11,6 +11,7 @@
 
 namespace Mautic\ReportBundle\Controller;
 
+use Mautic\CoreBundle\Controller\ExportControllerTrait;
 use Mautic\CoreBundle\Controller\FormController;
 use Mautic\ReportBundle\Entity\Report;
 use Symfony\Component\HttpFoundation;
@@ -20,6 +21,8 @@ use Symfony\Component\HttpFoundation;
  */
 class ReportController extends FormController
 {
+    use ExportControllerTrait;
+
     /**
      * @param int $page
      *
@@ -782,12 +785,51 @@ class ReportController extends FormController
         $session  = $this->get('session');
         $fromDate = $session->get('mautic.report.date.from', (new \DateTime('-30 days'))->format('Y-m-d'));
         $toDate   = $session->get('mautic.report.date.to', (new \DateTime())->format('Y-m-d'));
-
-        $reportData = $model->getReportData($entity, null, [
+        $options  = [
             'dateFrom' => new \DateTime($fromDate),
             'dateTo'   => new \DateTime($toDate),
-        ]);
+        ];
 
-        return $model->exportResults($format, $entity, $reportData);
+        if ('html' === $format) {
+            $reportData = $model->getReportData($entity, null, $options);
+
+            return $this->delegateView(
+                [
+                    'contentTemplate' => $reportData['contentTemplate'],
+                    'viewParameters'  => [
+                        'data'      => $reportData['data'],
+                        'columns'   => $reportData['columns'],
+                        'pageTitle' => $entity->getName(),
+                        'graphs'    => $reportData['graphs'],
+                        'report'    => $entity,
+                        'dateFrom'  => $reportData['dateFrom'],
+                        'dateTo'    => $reportData['dateTo'],
+                    ],
+                ]
+            );
+        }
+
+        $start = $this->request->query->has('export') ? (int) $this->request->query->get('export') : 0;
+        $options += [
+            'ignoreGraphData' => true,
+            'start'           => $start,
+            'limit'           => 100,
+        ];
+
+        if (!$start) {
+            $options['withTotalCount'] = true;
+        }
+
+        $reportData = $model->getReportData($entity, null, $options);
+
+        return $this->batchExportProgessAction(
+            $format,
+            $options['start'],
+            (isset($reportData['totalResults'])) ? $reportData['totalResults'] : null,
+            $reportData,
+            $entity->getName(),
+            'mautic_report_action',
+            'mautic_report_index'
+        );
     }
 }

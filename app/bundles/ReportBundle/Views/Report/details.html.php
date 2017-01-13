@@ -38,7 +38,7 @@ if ($tmpl == 'index') {
         if (!empty($data)) {
             $buttons[] = [
                 'attr' => [
-                    'data-toggle' => 'download',
+                    'data-toggle' => 'ajax',
                     'class'       => 'btn btn-default btn-nospin',
                     'href'        => $view['router']->path(
                         'mautic_report_export',
@@ -52,7 +52,7 @@ if ($tmpl == 'index') {
             if (class_exists('PHPExcel')) {
                 $buttons[] = [
                     'attr' => [
-                        'data-toggle' => 'download',
+                        'data-toggle' => 'ajax',
                         'class'       => 'btn btn-default btn-nospin',
                         'href'        => $view['router']->path(
                             'mautic_report_export',

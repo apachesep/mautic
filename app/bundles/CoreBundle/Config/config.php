@@ -346,8 +346,10 @@ return [
             ],
             'mautic.helper.template.formatter' => [
                 'class'     => 'Mautic\CoreBundle\Templating\Helper\FormatterHelper',
-                'arguments' => 'mautic.factory',
-                'alias'     => 'formatter',
+                'arguments' => [
+                    'mautic.helper.template.date',
+                ],
+                'alias' => 'formatter',
             ],
             'mautic.helper.template.security' => [
                 'class'     => 'Mautic\CoreBundle\Templating\Helper\SecurityHelper',
@@ -395,6 +397,13 @@ return [
             ],
             'mautic.helper.phone_number' => [
                 'class' => 'Mautic\CoreBundle\Helper\PhoneNumberHelper',
+            ],
+            'mautic.helper.exporter' => [
+                'class'     => 'Mautic\CoreBundle\Helper\ExportHelper',
+                'arguments' => [
+                    'mautic.helper.template.formatter',
+                    'mautic.helper.paths',
+                ],
             ],
         ],
         'menus' => [

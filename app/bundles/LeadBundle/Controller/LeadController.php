@@ -2390,11 +2390,7 @@ class LeadController extends FormController
             'withTotalCount' => true,
         ];
 
-        $resultsCallback = function ($contact) {
-            return $contact->getProfileFields();
-        };
-
-        $toExport = $this->getDataForExport($model, $args, $resultsCallback);
+        $toExport = $this->getDataForExport($model, $args);
 
         return $this->exportResultsAs($toExport, $dataType, 'contacts');
     }

@@ -11,6 +11,7 @@
 
 namespace Mautic\CoreBundle\Controller;
 
+use Doctrine\ORM\Tools\Pagination\Paginator;
 use Exporter\Handler;
 use Exporter\Source\ArraySourceIterator;
 use Exporter\Writer\CsvWriter;
@@ -19,6 +20,7 @@ use Mautic\CoreBundle\Factory\MauticFactory;
 use Mautic\CoreBundle\Helper\CoreParametersHelper;
 use Mautic\CoreBundle\Helper\InputHelper;
 use Mautic\CoreBundle\Model\AbstractCommonModel;
+use Mautic\LeadBundle\Entity\CustomFieldEntityInterface;
 use Mautic\UserBundle\Entity\User;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Symfony\Component\Debug\Exception\FlattenException;
@@ -757,13 +759,14 @@ class CommonController extends Controller implements MauticController
     }
 
     /**
-     * @param array $toExport
-     * @param       $type
-     * @param       $filename
+     * @param                     $type
+     * @param                     $filename
+     * @param AbstractCommonModel $model
+     * @param array               $args
      *
      * @return StreamedResponse
      */
-    public function exportResultsAs(array $toExport, $type, $filename)
+    protected function exportResultsAs($type, $filename, AbstractCommonModel $model, array $args)
     {
         if (!in_array($type, ['csv', 'xlsx'])) {
             throw new \InvalidArgumentException($this->translator->trans('mautic.error.invalid.export.type', ['%type%' => $type]));
@@ -797,9 +800,16 @@ class CommonController extends Controller implements MauticController
         $args['limit'] = $args['limit'] < 200 ? 200 : $args['limit'];
         $args['start'] = 0;
 
-        $results    = $model->getEntities($args);
-        $count      = $results['count'];
-        $items      = $results['results'];
+        $entityClass = get_class($model->getEntity());
+        $results     = $model->getEntities($args);
+        if ($results instanceof Paginator) {
+            $count = $results->count();
+            $items = $results->getIterator()->getArrayCopy();
+        } else {
+            $count = $results['count'];
+            $items = $results['results'];
+        }
+
         $iterations = ceil($count / $args['limit']);
         $loop       = 1;
 
@@ -811,23 +821,27 @@ class CommonController extends Controller implements MauticController
         $toExport = [];
 
         unset($args['withTotalCount']);
+        $args['ignore_paginator'] = true;
 
+        $isCallable = is_callable($resultsCallback);
         while ($loop <= $iterations) {
-            if (is_callable($resultsCallback)) {
-                foreach ($items as $item) {
+            foreach ($items as $item) {
+                if ($isCallable) {
                     $toExport[] = $resultsCallback($item);
-                }
-            } else {
-                foreach ($items as $item) {
+                } elseif ($item instanceof CustomFieldEntityInterface) {
+                    $toExport[] = $item->getProfileFields();
+                } elseif (is_object($item) && method_exists($item, 'convertToArray')) {
+                    $toExport[] = $item->convertToArray();
+                } else {
                     $toExport[] = (array) $item;
                 }
             }
 
+            $this->getDoctrine()->getManager()->clear($entityClass);
+
             $args['start'] = $loop * $args['limit'];
 
             $items = $model->getEntities($args);
-
-            $this->getDoctrine()->getManager()->clear();
 
             ++$loop;
         }

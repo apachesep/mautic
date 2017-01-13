@@ -124,8 +124,8 @@ return [
                 'class'     => 'Mautic\ReportBundle\Model\ReportModel',
                 'arguments' => [
                     'mautic.helper.core_parameters',
-                    'mautic.helper.template.formatter',
                     'mautic.helper.templating',
+                    'mautic.helper.exporter',
                 ],
             ],
         ],
