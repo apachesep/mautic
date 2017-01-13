@@ -13,7 +13,6 @@ namespace Mautic\DashboardBundle\Model;
 
 use Mautic\CoreBundle\Helper\CacheStorageHelper;
 use Mautic\CoreBundle\Helper\CoreParametersHelper;
-use Mautic\CoreBundle\Helper\PathsHelper;
 use Mautic\CoreBundle\Model\FormModel;
 use Mautic\DashboardBundle\DashboardEvents;
 use Mautic\DashboardBundle\Entity\Widget;
@@ -37,20 +36,20 @@ class DashboardModel extends FormModel
     protected $coreParametersHelper;
 
     /**
-     * @var PathsHelper
+     * @var CacheStorageHelper
      */
-    protected $pathsHelper;
+    protected $cacheStorageHelper;
 
     /**
      * DashboardModel constructor.
      *
      * @param CoreParametersHelper $coreParametersHelper
-     * @param PathsHelper          $pathsHelper
+     * @param CacheStorageHelper   $cacheStorageHelper
      */
-    public function __construct(CoreParametersHelper $coreParametersHelper, PathsHelper $pathsHelper)
+    public function __construct(CoreParametersHelper $coreParametersHelper, CacheStorageHelper $cacheStorageHelper)
     {
         $this->coreParametersHelper = $coreParametersHelper;
-        $this->pathsHelper          = $pathsHelper;
+        $this->cacheStorageHelper   = $cacheStorageHelper;
     }
 
     /**
@@ -168,10 +167,8 @@ class DashboardModel extends FormModel
      * @param Widget $widget
      * @param array  $filter
      */
-    public function populateWidgetContent(Widget &$widget, $filter = [])
+    public function populateWidgetContent(Widget $widget, $filter = [])
     {
-        $cacheDir = $this->coreParametersHelper->getParameter('cached_data_dir', $this->pathsHelper->getSystemPath('cache', true));
-
         if ($widget->getCacheTimeout() == null || $widget->getCacheTimeout() == -1) {
             $widget->setCacheTimeout($this->coreParametersHelper->getParameter('cached_data_timeout'));
         }
@@ -197,7 +194,7 @@ class DashboardModel extends FormModel
         $event = new WidgetDetailEvent($this->translator);
         $event->setWidget($widget);
 
-        $event->setCacheDir($cacheDir, $this->userHelper->getUser()->getId());
+        $event->setCacheStorageHelper($this->getDashboardCache());
         $event->setSecurity($this->security);
         $this->dispatcher->dispatch(DashboardEvents::DASHBOARD_ON_MODULE_DETAIL_GENERATE, $event);
     }
@@ -207,9 +204,7 @@ class DashboardModel extends FormModel
      */
     public function clearDashboardCache()
     {
-        $cacheDir     = $this->coreParametersHelper->getParameter('cached_data_dir', $this->pathsHelper->getSystemPath('cache', true));
-        $cacheStorage = new CacheStorageHelper($cacheDir, $this->userHelper->getUser()->getId());
-        $cacheStorage->clear();
+        $this->getDashboardCache()->clear();
     }
 
     /**
@@ -271,5 +266,13 @@ class DashboardModel extends FormModel
             'dateFrom' => $dateFrom,
             'dateTo'   => $dateTo,
         ];
+    }
+
+    /**
+     * @return CacheStorageHelper
+     */
+    protected function getDashboardCache()
+    {
+        return $this->cacheStorageHelper->getCache('dashboard.'.$this->userHelper->getUser()->getId());
     }
 }

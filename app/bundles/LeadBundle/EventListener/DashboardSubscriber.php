@@ -199,99 +199,107 @@ class DashboardSubscriber extends MainDashboardSubscriber
         }
 
         if ($event->getType() == 'lead.lifetime') {
-            $params = $event->getWidget()->getParams();
+            if (!$event->isCached()) {
+                $params = $event->getWidget()->getParams();
 
-            if (empty($params['limit'])) {
-                // Count the list limit from the widget height
-                $limit = round((($event->getWidget()->getHeight() - 80) / 35) - 1);
-            } else {
-                $limit = $params['limit'];
-            }
+                $maxSegmentsToshow        = 4;
+                $params['filter']['flag'] = [];
 
-            $maxSegmentsToshow        = 4;
-            $params['filter']['flag'] = [];
-
-            if (isset($params['flag'])) {
-                $params['filter']['flag'] = $params['flag'];
-                $maxSegmentsToshow        = count($params['filter']['flag']);
-            }
-
-            $lists = $this->leadListModel->getLifeCycleSegments($maxSegmentsToshow, $params['dateFrom'], $params['dateTo'], $canViewOthers, $params['filter']['flag']);
-            $items = [];
-
-            if (empty($lists)) {
-                $lists[] = [
-                    'leads' => 0,
-                    'id'    => 0,
-                    'name'  => $event->getTranslator()->trans('mautic.lead.all.leads'),
-                    'alias' => '',
-                ];
-            }
-
-            // Build table rows with links
-            if ($lists) {
-                $stages            = [];
-                $deviceGranularity = [];
-
-                foreach ($lists as &$list) {
-                    if ($list['alias'] != '') {
-                        $listUrl = $this->router->generate('mautic_contact_index', ['search' => 'segment:'.$list['alias']]);
-                    } else {
-                        $listUrl = $this->router->generate('mautic_contact_index', []);
-                    }
-                    if ($list['id']) {
-                        $params['filter']['leadlist_id'] = [
-                            'value'            => $list['id'],
-                            'list_column_name' => 't.id',
-                        ];
-                    } else {
-                        unset($params['filter']['leadlist_id']);
-                    }
-
-                    $column = $this->leadListModel->getLifeCycleSegmentChartData(
-                        $params['timeUnit'],
-                        $params['dateFrom'],
-                        $params['dateTo'],
-                        $params['dateFormat'],
-                        $params['filter'],
-                        $canViewOthers,
-                        $list['name']
-                    );
-                    $items['columnName'][] = $list['name'];
-                    $items['value'][]      = $list['leads'];
-                    $items['link'][]       = $listUrl;
-                    $items['chartItems'][] = $column;
-
-                    $stages[] = $this->leadListModel->getStagesBarChartData($params['timeUnit'],
-                        $params['dateFrom'],
-                        $params['dateTo'],
-                        $params['dateFormat'],
-                        $params['filter'],
-                        $canViewOthers);
-
-                    $deviceGranularity[] = $this->leadListModel->getDeviceGranularityData($params['timeUnit'],
-                        $params['dateFrom'],
-                        $params['dateTo'],
-                        $params['dateFormat'],
-                        $params['filter'],
-                        $canViewOthers);
+                if (isset($params['flag'])) {
+                    $params['filter']['flag'] = $params['flag'];
+                    $maxSegmentsToshow        = count($params['filter']['flag']);
                 }
-                $width = 100 / count($lists);
 
-                $event->setTemplateData([
-                    'columnName'  => $items['columnName'],
-                    'value'       => $items['value'],
-                    'width'       => $width,
-                    'link'        => $items['link'],
-                    'chartType'   => 'pie',
-                    'chartHeight' => $event->getWidget()->getHeight() - 180,
-                    'chartItems'  => $items['chartItems'],
-                    'stages'      => $stages,
-                    'devices'     => $deviceGranularity,
-                ]);
-                $event->setTemplate('MauticCoreBundle:Helper:lifecycle.html.php');
-                $event->stopPropagation();
+                $lists = $this->leadListModel->getLifeCycleSegments(
+                    $maxSegmentsToshow,
+                    $params['dateFrom'],
+                    $params['dateTo'],
+                    $canViewOthers,
+                    $params['filter']['flag']
+                );
+                $items = [];
+
+                if (empty($lists)) {
+                    $lists[] = [
+                        'leads' => 0,
+                        'id'    => 0,
+                        'name'  => $event->getTranslator()->trans('mautic.lead.all.leads'),
+                        'alias' => '',
+                    ];
+                }
+
+                // Build table rows with links
+                if ($lists) {
+                    $stages            = [];
+                    $deviceGranularity = [];
+
+                    foreach ($lists as &$list) {
+                        if ($list['alias'] != '') {
+                            $listUrl = $this->router->generate('mautic_contact_index', ['search' => 'segment:'.$list['alias']]);
+                        } else {
+                            $listUrl = $this->router->generate('mautic_contact_index', []);
+                        }
+                        if ($list['id']) {
+                            $params['filter']['leadlist_id'] = [
+                                'value'            => $list['id'],
+                                'list_column_name' => 't.id',
+                            ];
+                        } else {
+                            unset($params['filter']['leadlist_id']);
+                        }
+
+                        $column = $this->leadListModel->getLifeCycleSegmentChartData(
+                            $params['timeUnit'],
+                            $params['dateFrom'],
+                            $params['dateTo'],
+                            $params['dateFormat'],
+                            $params['filter'],
+                            $canViewOthers,
+                            $list['name']
+                        );
+                        $items['columnName'][] = $list['name'];
+                        $items['value'][]      = $list['leads'];
+                        $items['link'][]       = $listUrl;
+                        $items['chartItems'][] = $column;
+
+                        $stages[] = $this->leadListModel->getStagesBarChartData(
+                            $params['timeUnit'],
+                            $params['dateFrom'],
+                            $params['dateTo'],
+                            $params['dateFormat'],
+                            $params['filter'],
+                            $canViewOthers
+                        );
+
+                        $deviceGranularity[] = $this->leadListModel->getDeviceGranularityData(
+                            $params['timeUnit'],
+                            $params['dateFrom'],
+                            $params['dateTo'],
+                            $params['dateFormat'],
+                            $params['filter'],
+                            $canViewOthers
+                        );
+                    }
+                    $width = 100 / count($lists);
+
+                    $event->setTemplateData(
+                        [
+                            'columnName'  => $items['columnName'],
+                            'value'       => $items['value'],
+                            'width'       => $width,
+                            'link'        => $items['link'],
+                            'chartType'   => 'pie',
+                            'chartHeight' => $event->getWidget()->getHeight() - 180,
+                            'chartItems'  => $items['chartItems'],
+                            'stages'      => $stages,
+                            'devices'     => $deviceGranularity,
+                        ]
+                    );
+                }
             }
+
+            $event->setTemplate('MauticLeadBundle:Dashboard:lifecycle.html.php');
+            $event->stopPropagation();
 
             return;
         }

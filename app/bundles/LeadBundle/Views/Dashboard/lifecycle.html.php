@@ -12,7 +12,6 @@
 
 
 <?php
-
 foreach ($chartItems as $key => $chartData) :
     ?>
     <div style="float: left; width: <?php echo $width; ?>%; " class="pt-sd pr-md pb-md pl-md">

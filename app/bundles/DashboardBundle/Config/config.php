@@ -72,7 +72,7 @@ return [
                 'class'     => 'Mautic\DashboardBundle\Model\DashboardModel',
                 'arguments' => [
                     'mautic.helper.core_parameters',
-                    'mautic.helper.paths',
+                    'mautic.helper.cache_storage',
                 ],
             ],
         ],

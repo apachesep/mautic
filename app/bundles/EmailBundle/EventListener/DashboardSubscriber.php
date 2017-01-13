@@ -123,15 +123,16 @@ class DashboardSubscriber extends MainDashboardSubscriber
         }
 
         if ($event->getType() == 'upcoming.emails') {
-            $widget = $event->getWidget();
-            $params = $widget->getParams();
-            $height = $widget->getHeight();
-            $limit  = round(($height - 80) / 60);
+            if (!$event->isCached()) {
+                $widget = $event->getWidget();
+                $height = $widget->getHeight();
+                $limit  = round(($height - 80) / 60);
 
-            $upcomingEmails = $this->emailModel->getUpcomingEmails($limit, $canViewOthers);
+                $upcomingEmails = $this->emailModel->getUpcomingEmails($limit, $canViewOthers);
+                $event->setTemplateData(['upcomingEmails' => $upcomingEmails]);
+            }
 
             $event->setTemplate('MauticDashboardBundle:Dashboard:upcomingemails.html.php');
-            $event->setTemplateData(['upcomingEmails' => $upcomingEmails]);
             $event->stopPropagation();
         }
 

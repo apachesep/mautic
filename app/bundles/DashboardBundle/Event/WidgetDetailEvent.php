@@ -22,24 +22,38 @@ use Symfony\Component\Translation\TranslatorInterface;
  */
 class WidgetDetailEvent extends CommonEvent
 {
+    /** @var Widget */
     protected $widget;
+
     protected $type;
     protected $template;
     protected $templateData = [];
     protected $errorMessage;
     protected $uniqueId;
-    protected $cacheDir;
-    protected $uniqueCacheDir;
     protected $cacheTimeout;
     protected $startTime = 0;
     protected $loadTime  = 0;
+
+    /**
+     * @var TranslatorInterface
+     */
     protected $translator;
+
+    /**
+     * @var CacheStorageHelper
+     */
+    protected $cacheStorageHelper;
 
     /**
      * @var CorePermissions
      */
     protected $security = null;
 
+    /**
+     * WidgetDetailEvent constructor.
+     *
+     * @param TranslatorInterface $translator
+     */
     public function __construct(TranslatorInterface $translator)
     {
         $this->translator = $translator;
@@ -47,14 +61,11 @@ class WidgetDetailEvent extends CommonEvent
     }
 
     /**
-     * Set the cache dir.
-     *
-     * @param string $cacheDir
+     * @param CacheStorageHelper $cacheStorageHelper
      */
-    public function setCacheDir($cacheDir, $uniqueCacheDir = null)
+    public function setCacheStorageHelper(CacheStorageHelper $cacheStorageHelper)
     {
-        $this->cacheDir       = $cacheDir;
-        $this->uniqueCacheDir = $uniqueCacheDir;
+        $this->cacheStorageHelper = $cacheStorageHelper;
     }
 
     /**
@@ -164,9 +175,9 @@ class WidgetDetailEvent extends CommonEvent
         $this->widget->setLoadTime(abs(microtime() - $this->startTime));
 
         // Store the template data to the cache
-        if (!$skipCache && $this->cacheDir && $this->widget->getCacheTimeout() > 0) {
-            $cache = new CacheStorageHelper($this->cacheDir, $this->uniqueCacheDir);
-            $cache->set($this->getUniqueWidgetId(), $templateData);
+        $cacheExpiration = $this->widget->getCacheTimeout();
+        if (!$skipCache && $this->cacheStorageHelper && $cacheExpiration > 0) {
+            $this->cacheStorageHelper->set($this->getUniqueWidgetId(), $templateData, $cacheExpiration * 60);
         }
     }
 
@@ -234,14 +245,11 @@ class WidgetDetailEvent extends CommonEvent
      */
     public function isCached()
     {
-        if (!$this->cacheDir) {
+        if (!$this->cacheStorageHelper) {
             return false;
         }
 
-        $cache = new CacheStorageHelper($this->cacheDir, $this->uniqueCacheDir);
-        $data  = $cache->get($this->getUniqueWidgetId(), $this->cacheTimeout);
-
-        if ($data) {
+        if ($data = $this->cacheStorageHelper->get($this->getUniqueWidgetId())) {
             $this->widget->setCached(true);
             $this->setTemplateData($data, true);
 
@@ -302,5 +310,17 @@ class WidgetDetailEvent extends CommonEvent
         }
 
         return $this->security->isGranted($permission);
+    }
+
+    /**
+     * Set the cache dir.
+     *
+     * @deprecated 2.6.0 to be removed in 3.0
+     *
+     * @param string $cacheDir
+     */
+    public function setCacheDir($cacheDir, $uniqueCacheDir = null)
+    {
+        $this->cacheStorageHelper = new CacheStorageHelper('fs', $uniqueCacheDir, null, $cacheDir);
     }
 }
