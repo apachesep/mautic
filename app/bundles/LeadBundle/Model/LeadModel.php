@@ -2864,6 +2864,10 @@ class LeadModel extends FormModel
         return $success;
     }
 
+    /**
+     * @param Lead $lead
+     * @param      $ownerId
+     */
     public function updateLeadOwner(Lead $lead, $ownerId)
     {
         $owner = $this->em->getReference(User::class, $ownerId);
